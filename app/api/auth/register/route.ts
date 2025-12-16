@@ -11,12 +11,12 @@ export async function POST(request: NextRequest) {
     const validationResult = registerSchema.safeParse(body);
     if (!validationResult.success) {
       return NextResponse.json(
-        { 
+        {
           error: "Validation failed",
-          details: validationResult.error.errors.map(e => ({
+          details: validationResult.error.issues.map((e) => ({
             field: e.path.join("."),
-            message: e.message
-          }))
+            message: e.message,
+          })),
         },
         { status: 400 }
       );
@@ -36,27 +36,39 @@ export async function POST(request: NextRequest) {
 
     await User.create({
       email,
-      password,  
+      password,
     });
 
     return NextResponse.json(
       { message: "User registered successfully" },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error("Registration error", error);
-    
-    // Handle duplicate key error
-    if (error.code === 11000) {
+  } catch (err: unknown) {
+    console.error("Registration error", err);
+
+    // Handle Mongo duplicate key error safely
+    if (
+      typeof err === "object" &&
+      err !== null &&
+      "code" in err &&
+      (err as { code: number }).code === 11000
+    ) {
       return NextResponse.json(
         { error: "User already registered" },
         { status: 400 }
       );
     }
 
+    if (err instanceof Error) {
+      return NextResponse.json(
+        { error: err.message },
+        { status: 400 }
+      );
+    }
+
     return NextResponse.json(
-      { error: error.message || "Failed to register user" },
-      { status: 400 }
+      { error: "Failed to register user" },
+      { status: 500 }
     );
   }
 }

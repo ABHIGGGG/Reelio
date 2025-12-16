@@ -42,7 +42,7 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
 
     if (!validationResult.success) {
       const fieldErrors: Record<string, string> = {};
-      validationResult.error.errors.forEach((err) => {
+      validationResult.error.issues.forEach((err) => {
         const field = err.path[0];
         if (typeof field === "string") {
           fieldErrors[field] = err.message;

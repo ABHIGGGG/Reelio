@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 async function getVideo(id: string) {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+  const baseUrl =
+    process.env.NEXT_PUBLIC_BASE_URL ?? "http://localhost:3000";
+
   const res = await fetch(`${baseUrl}/api/videos/${id}`, {
     cache: "no-store",
   });
@@ -11,15 +13,18 @@ async function getVideo(id: string) {
   if (!res.ok) {
     return null;
   }
+
   return res.json();
 }
 
 export default async function VideoDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
-  const video = await getVideo(params.id);
+  const { id } = await params;
+
+  const video = await getVideo(id);
 
   if (!video) {
     notFound();
@@ -33,6 +38,7 @@ export default async function VideoDetailPage({
             <p className="text-sm text-gray-400">Reel</p>
             <h1 className="text-3xl font-bold">{video.title}</h1>
           </div>
+
           <Link
             href="/dashboard"
             className="text-sm text-gray-300 hover:text-white underline underline-offset-4"
@@ -42,16 +48,17 @@ export default async function VideoDetailPage({
         </div>
 
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden shadow-2xl">
-          <div className="relative w-full bg-black flex items-center justify-center" style={{ aspectRatio: "9/16", maxHeight: "80vh" }}>
-            <div className="w-full h-full flex items-center justify-center">
-              <Video
-                src={video.videoUrl}
-                controls={true}
-                className="w-full h-full object-contain max-h-full"
-                style={{ maxWidth: "100%", maxHeight: "100%" }}
-              />
-            </div>
+          <div
+            className="relative w-full bg-black flex items-center justify-center"
+            style={{ aspectRatio: "9 / 16", maxHeight: "80vh" }}
+          >
+            <Video
+              src={video.videoUrl}
+              controls
+              className="w-full h-full object-contain"
+            />
           </div>
+
           <div className="p-6 space-y-3">
             <h2 className="text-2xl font-semibold">{video.title}</h2>
             <p className="text-gray-300">{video.description}</p>
@@ -61,4 +68,3 @@ export default async function VideoDetailPage({
     </div>
   );
 }
-

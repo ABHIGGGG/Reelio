@@ -3,13 +3,12 @@
 import { upload } from "@imagekit/next";
 import { useState } from "react";
 
-interface ImageKitUploadResponse {
+type UploadSuccess = {
   url: string;
-  [key: string]: unknown;
-}
+};
 
 interface FileUploadProps {
-  onSuccess: (res: ImageKitUploadResponse) => void;
+  onSuccess: (res: UploadSuccess) => void;
   onProgress?: (progress: number) => void;
   fileType?: "image" | "video";
 }
@@ -42,21 +41,19 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
     if (!validateFile(file)) return;
 
     setUploading(true);
     setError(null);
 
     try {
-      // 👇 make sure this matches your route path
       const authRes = await fetch("/api/auth/imagekit-auth");
       if (!authRes.ok) {
         throw new Error("Failed to get upload auth");
       }
 
-      // expected: { token, expire, signature, publicKey }
-      const { token, expire, signature, publicKey } = await authRes.json();
+      const { token, expire, signature, publicKey } =
+        await authRes.json();
 
       const res = await upload({
         file,
@@ -73,7 +70,12 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
         },
       });
 
-      onSuccess(res);
+      // ✅ THIS IS THE KEY FIX
+      if (!res.url) {
+        throw new Error("Upload failed: no URL returned");
+      }
+
+      onSuccess({ url: res.url });
     } catch (err) {
       console.error("Upload failed", err);
       setError("Upload failed. Please try again.");
@@ -96,22 +98,20 @@ const FileUpload = ({ onSuccess, onProgress, fileType }: FileUploadProps) => {
                      file:text-sm file:font-semibold
                      file:bg-gradient-to-r file:from-purple-700 file:to-fuchsia-700 file:text-white
                      file:hover:from-purple-800 file:hover:to-fuchsia-800
-                     file:cursor-pointer file:transition-all
                      disabled:opacity-50 disabled:cursor-not-allowed
-                     cursor-pointer bg-white/5 border border-white/10 rounded-lg p-2"
+                     bg-white/5 border border-white/10 rounded-lg p-2"
         />
       </label>
+
       {uploading && (
         <div className="flex items-center gap-2 text-sm text-purple-200">
           <div className="w-4 h-4 border-2 border-purple-400 border-t-transparent rounded-full animate-spin" />
           <span>Uploading...</span>
         </div>
       )}
+
       {error && (
-        <div className="flex items-center gap-2 text-sm text-red-300 bg-red-500/10 border border-red-500/40 p-2 rounded-lg">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
+        <div className="text-sm text-red-300 bg-red-500/10 border border-red-500/40 p-2 rounded-lg">
           {error}
         </div>
       )}
