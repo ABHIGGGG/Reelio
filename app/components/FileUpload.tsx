@@ -3,8 +3,13 @@
 import { upload } from "@imagekit/next";
 import { useState } from "react";
 
+interface ImageKitUploadResponse {
+  url: string;
+  [key: string]: unknown;
+}
+
 interface FileUploadProps {
-  onSuccess: (res: any) => void;
+  onSuccess: (res: ImageKitUploadResponse) => void;
   onProgress?: (progress: number) => void;
   fileType?: "image" | "video";
 }

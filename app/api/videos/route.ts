@@ -4,6 +4,7 @@ import Video from "@/models/Video";
 import { getServerSession } from "next-auth";
 import { NextRequest, NextResponse } from "next/server";
 import { videoUploadSchema } from "@/lib/validations";
+import type { ZodIssue } from "zod";
 
 export async function GET() {
   try {
@@ -37,9 +38,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { 
           error: "Validation failed",
-          details: validationResult.error.errors.map(e => ({
-            field: e.path.join("."),
-            message: e.message
+          details: validationResult.error.issues.map((issue: ZodIssue) => ({
+            field: issue.path.join("."),
+            message: issue.message
           }))
         },
         { status: 400 }
@@ -64,10 +65,12 @@ export async function POST(request: NextRequest) {
     const newVideo = await Video.create(videoData);
 
     return NextResponse.json(newVideo, { status: 201 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("POST /api/videos error:", error);
+    const message =
+      error instanceof Error ? error.message : "Failed to create video";
     return NextResponse.json(
-      { error: error.message || "Failed to create video" },
+      { error: message },
       { status: 500 }
     );
   }

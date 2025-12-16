@@ -3,10 +3,20 @@
 import { useState } from "react";
 import FileUpload from "./FileUpload";
 import { videoUploadSchema } from "@/lib/validations";
-import { Upload, CheckCircle2, AlertCircle } from "lucide-react";
+import { CheckCircle2, AlertCircle } from "lucide-react";
 
 interface VideoUploadFormProps {
   onCreated?: () => void;
+}
+
+interface ApiErrorDetail {
+  field: string;
+  message: string;
+}
+
+interface ApiErrorResponse {
+  error?: string;
+  details?: ApiErrorDetail[];
 }
 
 function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
@@ -18,12 +28,11 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [success, setSuccess] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setErrors({});
     setSuccess(false);
 
-    // Validate with Zod
     const validationResult = videoUploadSchema.safeParse({
       title,
       description,
@@ -34,8 +43,9 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
     if (!validationResult.success) {
       const fieldErrors: Record<string, string> = {};
       validationResult.error.errors.forEach((err) => {
-        if (err.path[0]) {
-          fieldErrors[err.path[0].toString()] = err.message;
+        const field = err.path[0];
+        if (typeof field === "string") {
+          fieldErrors[field] = err.message;
         }
       });
       setErrors(fieldErrors);
@@ -61,17 +71,17 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
         }),
       });
 
-      const data = await res.json();
+      const data: ApiErrorResponse = await res.json();
 
       if (!res.ok) {
         if (data.details) {
           const fieldErrors: Record<string, string> = {};
-          data.details.forEach((detail: any) => {
+          data.details.forEach((detail) => {
             fieldErrors[detail.field] = detail.message;
           });
           setErrors(fieldErrors);
         } else {
-          setErrors({ general: data.error || "Failed to create video" });
+          setErrors({ general: data.error ?? "Failed to create video" });
         }
         return;
       }
@@ -82,10 +92,14 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
       setThumbUrl("");
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
-      if (onCreated) onCreated();
-    } catch (error: any) {
-      console.error("Create video error:", error);
-      setErrors({ general: error.message || "Failed to create video" });
+      onCreated?.();
+    } catch (err: unknown) {
+      console.error("Create video error:", err);
+      if (err instanceof Error) {
+        setErrors({ general: err.message });
+      } else {
+        setErrors({ general: "Failed to create video" });
+      }
     } finally {
       setLoading(false);
     }
@@ -119,15 +133,17 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
               if (errors.title) setErrors({ ...errors, title: "" });
             }}
             className={`w-full px-4 py-2.5 border rounded-lg bg-white/5 text-white placeholder:text-gray-500
-                       focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition-colors
-                       ${errors.title ? "border-red-500/70" : "border-white/10"}`}
-            placeholder="Enter video title"
+            focus:outline-none focus:ring-2 focus:ring-purple-600
+            ${errors.title ? "border-red-500/70" : "border-white/10"}`}
             maxLength={100}
+            placeholder="Enter video title"
           />
           {errors.title && (
             <p className="mt-1 text-sm text-red-400">{errors.title}</p>
           )}
-          <p className="mt-1 text-xs text-gray-400">{title.length}/100 characters</p>
+          <p className="mt-1 text-xs text-gray-400">
+            {title.length}/100 characters
+          </p>
         </div>
 
         <div>
@@ -138,82 +154,33 @@ function VideoUploadForm({ onCreated }: VideoUploadFormProps) {
             value={description}
             onChange={(e) => {
               setDesc(e.target.value);
-              if (errors.description) setErrors({ ...errors, description: "" });
+              if (errors.description)
+                setErrors({ ...errors, description: "" });
             }}
-            className={`w-full px-4 py-2.5 border rounded-lg bg-white/5 text-white placeholder:text-gray-500
-                       focus:outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition-colors resize-none
-                       ${errors.description ? "border-red-500/70" : "border-white/10"}`}
             rows={4}
-            placeholder="Enter video description"
             maxLength={500}
+            className={`w-full px-4 py-2.5 border rounded-lg bg-white/5 text-white
+            ${errors.description ? "border-red-500/70" : "border-white/10"}`}
           />
-          {errors.description && (
-            <p className="mt-1 text-sm text-red-400">{errors.description}</p>
-          )}
-          <p className="mt-1 text-xs text-gray-400">{description.length}/500 characters</p>
         </div>
 
         <div className="grid gap-5 md:grid-cols-2">
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-200">
-              Video File <span className="text-red-500">*</span>
-            </label>
-            <FileUpload
-              fileType="video"
-              onSuccess={(res) => {
-                setVideoUrl(res.url);
-                if (errors.videoUrl) setErrors({ ...errors, videoUrl: "" });
-              }}
-            />
-            {videoUrl && (
-              <div className="flex items-center gap-2 text-sm text-green-300 mt-2">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Video uploaded successfully</span>
-              </div>
-            )}
-            {errors.videoUrl && (
-              <p className="text-sm text-red-400">{errors.videoUrl}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <label className="block text-sm font-semibold text-gray-200">
-              Thumbnail Image <span className="text-red-500">*</span>
-            </label>
-            <FileUpload
-              fileType="image"
-              onSuccess={(res) => {
-                setThumbUrl(res.url);
-                if (errors.thumbnailUrl) setErrors({ ...errors, thumbnailUrl: "" });
-              }}
-            />
-            {thumbnailUrl && (
-              <div className="flex items-center gap-2 text-sm text-green-300 mt-2">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Thumbnail uploaded successfully</span>
-              </div>
-            )}
-            {errors.thumbnailUrl && (
-              <p className="text-sm text-red-400">{errors.thumbnailUrl}</p>
-            )}
-          </div>
+          <FileUpload
+            fileType="video"
+            onSuccess={(res) => setVideoUrl(res.url)}
+          />
+          <FileUpload
+            fileType="image"
+            onSuccess={(res) => setThumbUrl(res.url)}
+          />
         </div>
 
         <button
           type="submit"
           disabled={loading || !videoUrl || !thumbnailUrl}
-          className="w-full bg-gradient-to-r from-purple-700 to-fuchsia-700 text-white py-3 rounded-lg font-semibold
-                     hover:from-purple-800 hover:to-fuchsia-800 active:scale-[0.99] transition-all 
-                     disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-purple-700 disabled:hover:to-fuchsia-700 shadow-lg shadow-purple-900/30"
+          className="w-full bg-gradient-to-r from-purple-700 to-fuchsia-700 py-3 rounded-lg font-semibold disabled:opacity-50"
         >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Uploading...
-            </span>
-          ) : (
-            "Upload Reel"
-          )}
+          {loading ? "Uploading..." : "Upload Reel"}
         </button>
       </form>
     </div>

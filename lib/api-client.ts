@@ -4,7 +4,7 @@ export type VideoFormData = Omit<IVideo, "_id">;
 
 type FetchOptions = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
-  body?: any;
+  body?: unknown;
   headers?: Record<string, string>;
 };
 
@@ -31,15 +31,15 @@ class ApiClient {
       throw new Error(await response.text());
     }
 
-    return response.json();
+    return (await response.json()) as T;
   }
 
   async getVideos() {
-    return this.fetch("/videos");
+    return this.fetch<IVideo[]>("/videos");
   }
 
   async createVideo(videoData: VideoFormData) {
-    return this.fetch("/videos", {
+    return this.fetch<IVideo>("/videos", {
       method: "POST",
       body: videoData,
     });

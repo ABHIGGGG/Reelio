@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import React, { useState } from "react";
 import { loginSchema } from "@/lib/validations";
-import { Github, Mail, Lock } from "lucide-react";
+import { Github, Lock } from "lucide-react";
 
 function LoginPage() {
   const [email, setEmail] = useState("");

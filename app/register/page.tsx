@@ -6,6 +6,16 @@ import { registerSchema } from "@/lib/validations";
 import { Github } from "lucide-react";
 import { signIn } from "next-auth/react";
 
+interface ApiErrorDetail {
+  field: string;
+  message: string;
+}
+
+interface ApiErrorResponse {
+  error?: string;
+  details?: ApiErrorDetail[];
+}
+
 function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -50,26 +60,28 @@ function RegisterPage() {
         }),
       });
 
-      const data = await res.json();
+      const data: ApiErrorResponse = await res.json();
 
       if (!res.ok) {
         if (data.details) {
           const fieldErrors: Record<string, string> = {};
-          data.details.forEach((detail: any) => {
+          data.details.forEach((detail) => {
             fieldErrors[detail.field] = detail.message;
           });
           setErrors(fieldErrors);
         } else {
-          setErrors({ general: data.error || "Registration failed" });
+          setErrors({ general: data.error ?? "Registration failed" });
         }
         setLoading(false);
         return;
       }
 
       router.push("/login");
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      setErrors({ general: error.message || "Registration failed" });
+      const message =
+        error instanceof Error ? error.message : "Registration failed";
+      setErrors({ general: message });
       setLoading(false);
     }
   };
